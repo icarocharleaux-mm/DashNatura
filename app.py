@@ -237,35 +237,38 @@ try:
             fig_filial_d.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", showlegend=False, xaxis_title="Filial", yaxis_title="Nº de Danos")
             st.plotly_chart(fig_filial_d, use_container_width=True)
 
-            # ==========================================
+         # ==========================================
     # ABA 3: DETALHES SOMENTE FALTAS
     # ==========================================
     with aba3:
         kf1, kf2, kf3, kf4 = st.columns(4)
-        kf1.metric("Ocorrências de Falta", len(df_faltas))
+        kf1.metric("Registros de Falta (Linhas)", len(df_faltas))
         kf2.metric("Motoristas Envolvidos", df_faltas["Motorista"].nunique())
         kf3.metric("Filiais Afetadas", df_faltas["Filial"].nunique())
-        kf4.metric("Itens Faltantes", int(df_faltas["Quantidade"].sum()))
+        kf4.metric("Total de Itens Faltantes", int(df_faltas["Quantidade"].sum()))
         st.write("---")
 
         col_esq_f, col_dir_f = st.columns(2)
         with col_esq_f:
-            st.markdown("**🚛 Top 10 Motoristas (Mais Faltas)**")
-            contagem_mot_faltas = df_faltas["Motorista"].value_counts().head(10).reset_index()
-            contagem_mot_faltas.columns = ['Motorista', 'Ocorrências'] 
+            st.markdown("**🚛 Top 10 Motoristas (Mais Itens Faltantes)**")
+            # ✨ A MÁGICA AQUI: Agora ele soma a coluna Quantidade por motorista!
+            contagem_mot_faltas = df_faltas.groupby("Motorista")["Quantidade"].sum().reset_index()
+            contagem_mot_faltas = contagem_mot_faltas.sort_values(by="Quantidade", ascending=False).head(10)
+            
             if not contagem_mot_faltas.empty:
                 contagem_mot_faltas['Filial'] = contagem_mot_faltas['Motorista'].map(filial_map)
                 contagem_mot_faltas['Classificação'] = ['Top 5 (Atenção)'] * min(5, len(contagem_mot_faltas)) + ['Outros'] * max(0, len(contagem_mot_faltas) - 5)
                 mapa_cores_f = {'Top 5 (Atenção)': '#d62728', 'Outros': '#7f7f7f'}
-                fig_f1 = px.bar(contagem_mot_faltas, x="Ocorrências", y="Motorista", orientation='h', color='Classificação', 
+                fig_f1 = px.bar(contagem_mot_faltas, x="Quantidade", y="Motorista", orientation='h', color='Classificação', 
                                 color_discrete_map=mapa_cores_f, hover_data={'Filial': True, 'Classificação': False}) 
-                fig_f1.update_layout(showlegend=False, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", xaxis_title="", yaxis_title="", yaxis={'categoryorder':'total ascending'})
+                fig_f1.update_layout(showlegend=False, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", xaxis_title="Nº de Itens", yaxis_title="", yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_f1, use_container_width=True)
 
         with col_dir_f:
-            st.markdown("**📦 Faltas por Categoria**")
-            contagem_cat_faltas = df_faltas["Categoria"].value_counts().reset_index()
-            contagem_cat_faltas.columns = ['Categoria', 'Quantidade']
+            st.markdown("**📦 Faltas por Categoria (Por Itens)**")
+            # ✨ E aqui soma a quantidade por categoria
+            contagem_cat_faltas = df_faltas.groupby("Categoria")["Quantidade"].sum().reset_index()
+            
             if not contagem_cat_faltas.empty:
                 fig_f2 = px.pie(contagem_cat_faltas, names="Categoria", values="Quantidade", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
                 fig_f2.update_traces(textposition='inside', textinfo='percent+label')
@@ -275,18 +278,17 @@ try:
         st.write("---")
         st.dataframe(df_faltas, use_container_width=True, height=250)
 
-        # ✨ NOVO GRÁFICO: COMPARATIVO DE FILIAIS (FALTAS) ✨
         st.write("---")
-        st.markdown("### 🏢 Comparativo de Faltas por Filial")
+        st.markdown("### 🏢 Comparativo de Faltas por Filial (Por Itens)")
         if not df_faltas.empty:
-            contagem_filial_faltas = df_faltas["Filial"].value_counts().reset_index()
-            contagem_filial_faltas.columns = ['Filial', 'Ocorrências']
+            # ✨ E aqui soma a quantidade por Filial!
+            contagem_filial_faltas = df_faltas.groupby("Filial")["Quantidade"].sum().reset_index()
             
-            fig_filial_f = px.bar(contagem_filial_faltas, x='Filial', y='Ocorrências', 
-                                  text='Ocorrências', color='Ocorrências', 
+            fig_filial_f = px.bar(contagem_filial_faltas, x='Filial', y='Quantidade', 
+                                  text='Quantidade', color='Quantidade', 
                                   color_continuous_scale='Reds')
             fig_filial_f.update_traces(textposition='outside', textfont_size=14)
-            fig_filial_f.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", showlegend=False, xaxis_title="Filial", yaxis_title="Nº de Faltas")
+            fig_filial_f.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", showlegend=False, xaxis_title="Filial", yaxis_title="Total de Itens Faltantes")
             st.plotly_chart(fig_filial_f, use_container_width=True)
 
     # ==========================================
