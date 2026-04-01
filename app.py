@@ -163,15 +163,106 @@ try:
                 st.plotly_chart(fig_pie, use_container_width=True)
 
     # ==========================================
-    # ABA 2 E 3: TABELAS
+    # ABA 2: DETALHES SOMENTE DANOS 
     # ==========================================
     with aba2:
+        kd1, kd2, kd3, kd4 = st.columns(4)
+        kd1.metric("Ocorrências de Dano (Linhas)", len(df_danos))
+        kd2.metric("Motoristas Envolvidos", df_danos["Motorista"].nunique())
+        kd3.metric("Filiais Afetadas", df_danos["Filial"].nunique())
+        kd4.metric("Itens Reclamados", int(df_danos["Quantidade"].sum()) if not df_danos.empty else 0)
+        st.write("---")
+
+        col_esq_d, col_dir_d = st.columns(2)
+        with col_esq_d:
+            st.markdown("**🚛 Top 10 Motoristas (Mais Itens Danificados)**")
+            if not df_danos.empty:
+                contagem_mot_danos = df_danos.groupby("Motorista")["Quantidade"].sum().reset_index().sort_values(by="Quantidade", ascending=False).head(10)
+                contagem_mot_danos['Filial'] = contagem_mot_danos['Motorista'].map(filial_map)
+                contagem_mot_danos['Classificação'] = ['Top 5 (Atenção)'] * min(5, len(contagem_mot_danos)) + ['Outros'] * max(0, len(contagem_mot_danos) - 5)
+                mapa_cores_d = {'Top 5 (Atenção)': '#d62728', 'Outros': '#1f77b4'}
+                fig_d1 = px.bar(contagem_mot_danos, x="Quantidade", y="Motorista", orientation='h', color='Classificação', 
+                                color_discrete_map=mapa_cores_d, hover_data={'Filial': True, 'Classificação': False}) 
+                fig_d1.update_layout(showlegend=False, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", xaxis_title="Total de Itens", yaxis_title="", yaxis={'categoryorder':'total ascending'})
+                st.plotly_chart(fig_d1, use_container_width=True)
+
+        with col_dir_d:
+            st.markdown("**📦 Danos por Categoria (Volume de Itens)**")
+            if not df_danos.empty:
+                contagem_cat_danos = df_danos.groupby("Categoria")["Quantidade"].sum().reset_index()
+                fig_d2 = px.pie(contagem_cat_danos, names="Categoria", values="Quantidade", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+                fig_d2.update_traces(textposition='inside', textinfo='percent+label')
+                fig_d2.update_layout(showlegend=False, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(t=10, b=10, l=10, r=10))
+                st.plotly_chart(fig_d2, use_container_width=True)
+
+        st.write("---")
         st.markdown("### 📋 Tabela Organizada - Danos")
         st.dataframe(organizar_tabela(df_danos), use_container_width=True, height=250)
 
+        # COMPARATIVO DE FILIAIS (DANOS)
+        st.write("---")
+        st.markdown("### 🏢 Comparativo de Danos por Filial (Itens)")
+        if not df_danos.empty:
+            contagem_filial_danos = df_danos.groupby("Filial")["Quantidade"].sum().reset_index().sort_values("Quantidade", ascending=False)
+            fig_filial_d = px.bar(contagem_filial_danos, x='Filial', y='Quantidade', 
+                                  text='Quantidade', color='Quantidade', 
+                                  color_continuous_scale='Blues')
+            fig_filial_d.update_traces(textposition='outside', textfont_size=14)
+            fig_filial_d.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", showlegend=False, 
+                                       xaxis_title="Filial", yaxis_title="Total de Itens",
+                                       xaxis={'categoryorder':'total descending'})
+            st.plotly_chart(fig_filial_d, use_container_width=True)
+
+    # ==========================================
+    # ABA 3: DETALHES SOMENTE FALTAS
+    # ==========================================
     with aba3:
+        kf1, kf2, kf3, kf4 = st.columns(4)
+        kf1.metric("Ocorrências de Falta (Linhas)", len(df_faltas))
+        kf2.metric("Motoristas Envolvidos", df_faltas["Motorista"].nunique())
+        kf3.metric("Filiais Afetadas", df_faltas["Filial"].nunique())
+        kf4.metric("Itens Faltantes", int(df_faltas["Quantidade"].sum()) if not df_faltas.empty else 0)
+        st.write("---")
+
+        col_esq_f, col_dir_f = st.columns(2)
+        with col_esq_f:
+            st.markdown("**🚛 Top 10 Motoristas (Mais Itens Faltantes)**")
+            if not df_faltas.empty:
+                contagem_mot_faltas = df_faltas.groupby("Motorista")["Quantidade"].sum().reset_index().sort_values(by="Quantidade", ascending=False).head(10)
+                contagem_mot_faltas['Filial'] = contagem_mot_faltas['Motorista'].map(filial_map)
+                contagem_mot_faltas['Classificação'] = ['Top 5 (Atenção)'] * min(5, len(contagem_mot_faltas)) + ['Outros'] * max(0, len(contagem_mot_faltas) - 5)
+                mapa_cores_f = {'Top 5 (Atenção)': '#d62728', 'Outros': '#7f7f7f'}
+                fig_f1 = px.bar(contagem_mot_faltas, x="Quantidade", y="Motorista", orientation='h', color='Classificação', 
+                                color_discrete_map=mapa_cores_f, hover_data={'Filial': True, 'Classificação': False}) 
+                fig_f1.update_layout(showlegend=False, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", xaxis_title="Total de Itens", yaxis_title="", yaxis={'categoryorder':'total ascending'})
+                st.plotly_chart(fig_f1, use_container_width=True)
+
+        with col_dir_f:
+            st.markdown("**📦 Faltas por Categoria (Volume de Itens)**")
+            if not df_faltas.empty:
+                contagem_cat_faltas = df_faltas.groupby("Categoria")["Quantidade"].sum().reset_index()
+                fig_f2 = px.pie(contagem_cat_faltas, names="Categoria", values="Quantidade", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+                fig_f2.update_traces(textposition='inside', textinfo='percent+label')
+                fig_f2.update_layout(showlegend=False, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(t=10, b=10, l=10, r=10))
+                st.plotly_chart(fig_f2, use_container_width=True)
+
+        st.write("---")
         st.markdown("### 📋 Tabela Organizada - Faltas")
         st.dataframe(organizar_tabela(df_faltas), use_container_width=True, height=250)
+
+        # COMPARATIVO DE FILIAIS (FALTAS)
+        st.write("---")
+        st.markdown("### 🏢 Comparativo de Faltas por Filial (Itens)")
+        if not df_faltas.empty:
+            contagem_filial_faltas = df_faltas.groupby("Filial")["Quantidade"].sum().reset_index().sort_values("Quantidade", ascending=False)
+            fig_filial_f = px.bar(contagem_filial_faltas, x='Filial', y='Quantidade', 
+                                  text='Quantidade', color='Quantidade', 
+                                  color_continuous_scale='Reds')
+            fig_filial_f.update_traces(textposition='outside', textfont_size=14)
+            fig_filial_f.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", showlegend=False, 
+                                       xaxis_title="Filial", yaxis_title="Total de Itens",
+                                       xaxis={'categoryorder':'total descending'})
+            st.plotly_chart(fig_filial_f, use_container_width=True)
 
     # ==========================================
     # ABAS 4 a 7: Módulos Originais
