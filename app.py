@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import traceback  # Rastreador de erros avançado
 
 # Importando o nosso arquivo dados.py
 from dados import load_data
@@ -40,22 +41,28 @@ def organizar_tabela(df_entrada):
 
 try:
     # 2. PUXANDO OS DADOS
-    df_danos_base, df_faltas_base, df_uni_base, df_mapa_agg, df_coord_agg, df_trat1_base, df_trat2_base = load_data()
+    df_danos_raw, df_faltas_raw, df_uni_raw, df_mapa_agg, df_coord_agg, df_trat1_base, df_trat2_base = load_data()
 
     # ==========================================
-    # ✨ A VACINA ANTI-ERRO (Limpeza forçada de tipos)
+    # ✨ A VACINA BLINDADA (Criando cópias destravadas)
     # ==========================================
+    # Precisamos criar cópias para o Streamlit não bloquear a edição!
+    df_danos_base = df_danos_raw.copy()
+    df_faltas_base = df_faltas_raw.copy()
+    df_uni_base = df_uni_raw.copy()
+
     for df_limpo in [df_danos_base, df_faltas_base, df_uni_base]:
         if not df_limpo.empty:
             # 1. Garante que Quantidade é número (se for texto vazio, vira 0)
             if 'Quantidade' in df_limpo.columns:
                 df_limpo['Quantidade'] = pd.to_numeric(df_limpo['Quantidade'], errors='coerce').fillna(0)
             
-            # 2. Garante que colunas de nomes são textos (evita conflito float vs str)
+            # 2. Transforma tudo que é texto em String, matando os floats fantasmas (NaN)
             colunas_texto = ['Cliente', 'Motorista', 'Filial', 'Categoria', 'Periodo', 'Tipo_Ocorrencia']
             for col in colunas_texto:
                 if col in df_limpo.columns:
                     df_limpo[col] = df_limpo[col].astype(str).str.strip()
+                    df_limpo.loc[df_limpo[col] == 'nan', col] = 'Não Identificado'
 
     st.title("🚀 Painel Integrado e Prevenção de Fraudes")
     st.markdown("Visão consolidada cruzando dados de **Danos**, **Faltas** e **Auditoria Logística**.")
@@ -79,19 +86,22 @@ try:
     # FILTROS GLOBAIS
     with st.sidebar:
         st.header("🔍 Filtros Integrados")
-        ordem_meses = {'Jan': 1, 'Fev': 2, 'Mar': 3, 'Abr': 4, 'Mai': 5, 'Jun': 6, 'Jul': 7, 'Ago': 8, 'Set': 9, 'Out': 10, 'Nov': 11, 'Dez': 12, 'N/A': 99, 'nan': 99}
-        meses_disponiveis = sorted([m for m in df_uni_base["Periodo"].unique() if m not in ['N/A', 'nan']], key=lambda x: ordem_meses.get(x, 100))
+        ordem_meses = {'Jan': 1, 'Fev': 2, 'Mar': 3, 'Abr': 4, 'Mai': 5, 'Jun': 6, 'Jul': 7, 'Ago': 8, 'Set': 9, 'Out': 10, 'Nov': 11, 'Dez': 12, 'N/A': 99, 'Não Identificado': 99}
+        
+        # Filtros com segurança extra (convertendo pra string na hora de organizar)
+        meses_disponiveis = sorted([str(m) for m in df_uni_base["Periodo"].unique() if str(m) not in ['N/A', 'Não Identificado']], key=lambda x: ordem_meses.get(x, 100))
         periodo_sel = st.selectbox("📅 Escolha o Mês:", ["Todos"] + meses_disponiveis)
-        motorista_sel = st.selectbox("🚛 Motorista:", ["Todos"] + sorted(df_uni_base["Motorista"].unique().tolist()))
-        filial_sel = st.selectbox("🏢 Filial:", ["Todas"] + sorted(df_uni_base["Filial"].unique().tolist()))
-        cat_sel = st.selectbox("📦 Categoria:", ["Todas"] + sorted(df_uni_base["Categoria"].unique().tolist()))
+        
+        motorista_sel = st.selectbox("🚛 Motorista:", ["Todos"] + sorted([str(x) for x in df_uni_base["Motorista"].unique()]))
+        filial_sel = st.selectbox("🏢 Filial:", ["Todas"] + sorted([str(x) for x in df_uni_base["Filial"].unique()]))
+        cat_sel = st.selectbox("📦 Categoria:", ["Todas"] + sorted([str(x) for x in df_uni_base["Categoria"].unique()]))
 
     # APLICANDO OS FILTROS 
     df_uni = df_uni_base.copy()
     df_danos = df_danos_base.copy()
     df_faltas = df_faltas_base.copy()
-    df_trat1 = df_trat1_base.copy()
-    df_trat2 = df_trat2_base.copy()
+    df_trat1 = df_trat1_base.copy() if not df_trat1_base.empty else pd.DataFrame()
+    df_trat2 = df_trat2_base.copy() if not df_trat2_base.empty else pd.DataFrame()
 
     if periodo_sel != "Todos":
         df_uni = df_uni[df_uni["Periodo"] == periodo_sel]
@@ -183,7 +193,7 @@ try:
         st.markdown("Identifique clientes com múltiplos acionamentos logísticos.")
 
         if 'Cliente' in df_uni.columns:
-            df_clientes = df_uni[~df_uni['Cliente'].str.upper().isin(['NÃO IDENTIFICADO', 'NAN', ''])]
+            df_clientes = df_uni[~df_uni['Cliente'].str.upper().isin(['NÃO IDENTIFICADO', 'NAN', ''])].dropna(subset=['Cliente'])
             if not df_clientes.empty:
                 rec_clientes = df_clientes.groupby('Cliente').agg(
                     Ocorrencias=('Tipo_Ocorrencia', 'count'),
@@ -254,6 +264,13 @@ try:
                     )
                 else:
                     st.success("✅ O motor rodou perfeitamente. Nenhum indício de fraude detectado com os filtros atuais.")
+        else:
+            st.warning("⚠️ Atualize o arquivo 'dados.py' incluindo a coluna 'Cliente' nas 'colunas_comuns'.")
+
+except Exception as e:
+    st.error(f"Erro ao processar o Dashboard Integrado: {e}")
+    # Esta linha mágica mostra a raiz exata do problema se ele acontecer de novo
+    st.code(traceback.format_exc())
         else:
             st.warning("⚠️ Atualize o arquivo 'dados.py' incluindo a coluna 'Cliente' nas 'colunas_comuns'.")
 
