@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import traceback  # Rastreador de erros avançado
+import traceback
 
 # Importando o nosso arquivo dados.py
 from dados import load_data
@@ -44,20 +44,17 @@ try:
     df_danos_raw, df_faltas_raw, df_uni_raw, df_mapa_agg, df_coord_agg, df_trat1_base, df_trat2_base = load_data()
 
     # ==========================================
-    # ✨ A VACINA BLINDADA (Criando cópias destravadas)
+    # ✨ A VACINA BLINDADA
     # ==========================================
-    # Precisamos criar cópias para o Streamlit não bloquear a edição!
     df_danos_base = df_danos_raw.copy()
     df_faltas_base = df_faltas_raw.copy()
     df_uni_base = df_uni_raw.copy()
 
     for df_limpo in [df_danos_base, df_faltas_base, df_uni_base]:
         if not df_limpo.empty:
-            # 1. Garante que Quantidade é número (se for texto vazio, vira 0)
             if 'Quantidade' in df_limpo.columns:
                 df_limpo['Quantidade'] = pd.to_numeric(df_limpo['Quantidade'], errors='coerce').fillna(0)
             
-            # 2. Transforma tudo que é texto em String, matando os floats fantasmas (NaN)
             colunas_texto = ['Cliente', 'Motorista', 'Filial', 'Categoria', 'Periodo', 'Tipo_Ocorrencia']
             for col in colunas_texto:
                 if col in df_limpo.columns:
@@ -88,7 +85,6 @@ try:
         st.header("🔍 Filtros Integrados")
         ordem_meses = {'Jan': 1, 'Fev': 2, 'Mar': 3, 'Abr': 4, 'Mai': 5, 'Jun': 6, 'Jul': 7, 'Ago': 8, 'Set': 9, 'Out': 10, 'Nov': 11, 'Dez': 12, 'N/A': 99, 'Não Identificado': 99}
         
-        # Filtros com segurança extra (convertendo pra string na hora de organizar)
         meses_disponiveis = sorted([str(m) for m in df_uni_base["Periodo"].unique() if str(m) not in ['N/A', 'Não Identificado']], key=lambda x: ordem_meses.get(x, 100))
         periodo_sel = st.selectbox("📅 Escolha o Mês:", ["Todos"] + meses_disponiveis)
         
@@ -269,10 +265,4 @@ try:
 
 except Exception as e:
     st.error(f"Erro ao processar o Dashboard Integrado: {e}")
-    # Esta linha mágica mostra a raiz exata do problema se ele acontecer de novo
     st.code(traceback.format_exc())
-        else:
-            st.warning("⚠️ Atualize o arquivo 'dados.py' incluindo a coluna 'Cliente' nas 'colunas_comuns'.")
-
-except Exception as e:
-    st.error(f"Erro ao processar o Dashboard Integrado: {e}")
