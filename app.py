@@ -42,6 +42,21 @@ try:
     # 2. PUXANDO OS DADOS
     df_danos_base, df_faltas_base, df_uni_base, df_mapa_agg, df_coord_agg, df_trat1_base, df_trat2_base = load_data()
 
+    # ==========================================
+    # ✨ A VACINA ANTI-ERRO (Limpeza forçada de tipos)
+    # ==========================================
+    for df_limpo in [df_danos_base, df_faltas_base, df_uni_base]:
+        if not df_limpo.empty:
+            # 1. Garante que Quantidade é número (se for texto vazio, vira 0)
+            if 'Quantidade' in df_limpo.columns:
+                df_limpo['Quantidade'] = pd.to_numeric(df_limpo['Quantidade'], errors='coerce').fillna(0)
+            
+            # 2. Garante que colunas de nomes são textos (evita conflito float vs str)
+            colunas_texto = ['Cliente', 'Motorista', 'Filial', 'Categoria', 'Periodo', 'Tipo_Ocorrencia']
+            for col in colunas_texto:
+                if col in df_limpo.columns:
+                    df_limpo[col] = df_limpo[col].astype(str).str.strip()
+
     st.title("🚀 Painel Integrado e Prevenção de Fraudes")
     st.markdown("Visão consolidada cruzando dados de **Danos**, **Faltas** e **Auditoria Logística**.")
     
@@ -64,12 +79,12 @@ try:
     # FILTROS GLOBAIS
     with st.sidebar:
         st.header("🔍 Filtros Integrados")
-        ordem_meses = {'Jan': 1, 'Fev': 2, 'Mar': 3, 'Abr': 4, 'Mai': 5, 'Jun': 6, 'Jul': 7, 'Ago': 8, 'Set': 9, 'Out': 10, 'Nov': 11, 'Dez': 12, 'N/A': 99}
-        meses_disponiveis = sorted([m for m in df_uni_base["Periodo"].unique() if m != 'N/A'], key=lambda x: ordem_meses.get(x, 100))
+        ordem_meses = {'Jan': 1, 'Fev': 2, 'Mar': 3, 'Abr': 4, 'Mai': 5, 'Jun': 6, 'Jul': 7, 'Ago': 8, 'Set': 9, 'Out': 10, 'Nov': 11, 'Dez': 12, 'N/A': 99, 'nan': 99}
+        meses_disponiveis = sorted([m for m in df_uni_base["Periodo"].unique() if m not in ['N/A', 'nan']], key=lambda x: ordem_meses.get(x, 100))
         periodo_sel = st.selectbox("📅 Escolha o Mês:", ["Todos"] + meses_disponiveis)
-        motorista_sel = st.selectbox("🚛 Motorista:", ["Todos"] + sorted(df_uni_base["Motorista"].astype(str).unique().tolist()))
-        filial_sel = st.selectbox("🏢 Filial:", ["Todas"] + sorted(df_uni_base["Filial"].astype(str).unique().tolist()))
-        cat_sel = st.selectbox("📦 Categoria:", ["Todas"] + sorted(df_uni_base["Categoria"].astype(str).unique().tolist()))
+        motorista_sel = st.selectbox("🚛 Motorista:", ["Todos"] + sorted(df_uni_base["Motorista"].unique().tolist()))
+        filial_sel = st.selectbox("🏢 Filial:", ["Todas"] + sorted(df_uni_base["Filial"].unique().tolist()))
+        cat_sel = st.selectbox("📦 Categoria:", ["Todas"] + sorted(df_uni_base["Categoria"].unique().tolist()))
 
     # APLICANDO OS FILTROS 
     df_uni = df_uni_base.copy()
@@ -168,7 +183,7 @@ try:
         st.markdown("Identifique clientes com múltiplos acionamentos logísticos.")
 
         if 'Cliente' in df_uni.columns:
-            df_clientes = df_uni[df_uni['Cliente'].astype(str).str.strip().str.upper() != 'NÃO IDENTIFICADO'].dropna(subset=['Cliente'])
+            df_clientes = df_uni[~df_uni['Cliente'].str.upper().isin(['NÃO IDENTIFICADO', 'NAN', ''])]
             if not df_clientes.empty:
                 rec_clientes = df_clientes.groupby('Cliente').agg(
                     Ocorrencias=('Tipo_Ocorrencia', 'count'),
@@ -200,14 +215,14 @@ try:
         st.markdown("Auditoria automática buscando volumes críticos e padrões suspeitos de fracionamento de reclamações.")
 
         if 'Cliente' in df_uni.columns:
-            df_fraude_base = df_uni[df_uni['Cliente'].astype(str).str.strip().str.upper() != 'NÃO IDENTIFICADO'].dropna(subset=['Cliente']).copy()
+            df_fraude_base = df_uni[~df_uni['Cliente'].str.upper().isin(['NÃO IDENTIFICADO', 'NAN', ''])].copy()
             
             if not df_fraude_base.empty:
                 # REGRA 1: Volume Absurdo (> 900 itens)
                 fraude_volume = df_fraude_base[df_fraude_base['Quantidade'] >= 900].copy()
                 fraude_volume['Motivo_Suspeita'] = 'Volume Crítico (>900 itens)'
 
-                # REGRA 2: Reclamações repetidas idênticas (>10 itens)
+                # REGRA 2: Reclamações repetidas idênticas (>= 10 itens)
                 df_repetidos = df_fraude_base[df_fraude_base['Quantidade'] >= 10].copy()
                 contagem_rep = df_repetidos.groupby(['Cliente', 'Quantidade']).size().reset_index(name='Vezes_Repetido')
                 clientes_suspeitos = contagem_rep[contagem_rep['Vezes_Repetido'] > 1]
@@ -218,7 +233,6 @@ try:
                 # Junta as fraudes
                 df_alertas = pd.concat([fraude_volume, fraude_repetida])
                 
-                # ✨ AQUI ESTÁ A TRAVA DE SEGURANÇA QUE PREVINE O ERRO INDEX
                 if not df_alertas.empty:
                     colunas_subset = [c for c in ['Pedido', 'Cliente', 'Quantidade', 'Motivo_Suspeita'] if c in df_alertas.columns]
                     df_alertas = df_alertas.drop_duplicates(subset=colunas_subset)
