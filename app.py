@@ -23,14 +23,25 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- FUNÇÃO PARA ORGANIZAR AS TABELAS ---
+# --- FUNÇÃO PARA ORGANIZAR AS TABELAS (AGORA BLINDADA CONTRA DUPLICATAS) ---
 def organizar_tabela(df_entrada):
     if df_entrada.empty:
         return df_entrada
         
     df = df_entrada.copy()
+    
+    # Vacina 1: Remove colunas com nomes exatamente iguais logo de cara
+    df = df.loc[:, ~df.columns.duplicated()]
+    
+    # Prevenção de conflito de nomes
     if 'nm_pedido' in df.columns:
-        df = df.rename(columns={'nm_pedido': 'Pedido'})
+        if 'Pedido' in df.columns:
+            df = df.drop(columns=['nm_pedido']) # Se já tem Pedido, descarta a nm_pedido
+        else:
+            df = df.rename(columns={'nm_pedido': 'Pedido'})
+            
+    # Vacina 2: Garante de novo caso o rename tenha gerado problema
+    df = df.loc[:, ~df.columns.duplicated()]
         
     colunas_iniciais = ['Cliente', 'Empresa', 'Canal', 'Motorista', 'Filial', 'Pedido', 'Quantidade', 'Rota']
     colunas_iniciais = [c for c in colunas_iniciais if c in df.columns]
@@ -43,6 +54,13 @@ def organizar_tabela(df_entrada):
 try:
     # 2. PUXANDO OS DADOS DO NOSSO OUTRO ARQUIVO
     df_danos_base, df_faltas_base, df_uni_base, df_mapa_agg, df_coord_agg, df_trat1_base, df_trat2_base = load_data()
+
+    # ==========================================
+    # 🛡️ REMOÇÃO DE DUPLICATAS NATIVAS DAS BASES
+    # ==========================================
+    if not df_danos_base.empty: df_danos_base = df_danos_base.loc[:, ~df_danos_base.columns.duplicated()]
+    if not df_faltas_base.empty: df_faltas_base = df_faltas_base.loc[:, ~df_faltas_base.columns.duplicated()]
+    if not df_uni_base.empty: df_uni_base = df_uni_base.loc[:, ~df_uni_base.columns.duplicated()]
 
     # ==========================================
     # 🛡️ A VACINA BLINDADA (Colunas Faltantes e Tipos)
@@ -317,7 +335,6 @@ try:
                 Total_Geral=('Tipo_Ocorrencia', 'count')
             ).reset_index()
             
-            # ✨ A CORREÇÃO DA ROTA: Agora as três tabelas se enxergam perfeitamente
             tabela_rotas['Rota'] = tabela_rotas['Rota'].astype(str)
             
             if not df_mapa_agg.empty and 'Rota' in df_mapa_agg.columns: 
@@ -405,6 +422,10 @@ try:
                 if not df_alertas.empty:
                     df_alertas = df_alertas.drop_duplicates(subset=['Pedido', 'Cliente', 'Quantidade', 'Motivo_Suspeita'])
                     st.error(f"⚠️ ATENÇÃO: {len(df_alertas)} registros com padrões suspeitos.")
+                    
+                    # Mais uma blindagem extra aqui por segurança
+                    df_alertas = df_alertas.loc[:, ~df_alertas.columns.duplicated()]
+                    
                     colunas_exibir = ['Motivo_Suspeita', 'Cliente', 'Pedido', 'Quantidade', 'Tipo_Ocorrencia', 'Motorista', 'Filial', 'Empresa', 'Canal', 'Periodo']
                     colunas_exibir = [c for c in colunas_exibir if c in df_alertas.columns]
                     st.dataframe(df_alertas[colunas_exibir], use_container_width=True, height=400)
