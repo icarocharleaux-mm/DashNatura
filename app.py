@@ -138,22 +138,23 @@ try:
     # ABA 2: DANOS
     with aba2:
         if not df_danos.empty:
-            st.markdown("### 📊 Análise de Danos: Filial e Top Motoristas")
-            col1, col2 = st.columns(2)
+            st.markdown("### 📊 Análise de Danos: Top Motoristas e Filial")
             
-            with col1:
-                st.markdown("**Comparativo por Filial (Itens)**")
-                contagem_f_d = df_danos.groupby("Filial")["Quantidade"].sum().reset_index().sort_values("Quantidade", ascending=False)
-                fig_f_d = px.bar(contagem_f_d, x='Filial', y='Quantidade', text='Quantidade', color='Quantidade', color_continuous_scale='Blues')
-                fig_f_d.update_layout(xaxis={'categoryorder':'total descending'}, showlegend=False)
-                st.plotly_chart(fig_f_d, use_container_width=True)
-                
-            with col2:
-                st.markdown("**Top 10 Motoristas (Itens)**")
-                ranking_m_d = df_danos.groupby("Motorista")["Quantidade"].sum().nlargest(10).reset_index()
-                fig_m_d = px.bar(ranking_m_d, x='Quantidade', y='Motorista', orientation='h', color='Quantidade', color_continuous_scale='Blues')
-                fig_m_d.update_layout(yaxis={'categoryorder':'total ascending'}, showlegend=False)
-                st.plotly_chart(fig_m_d, use_container_width=True)
+            # 1º Gráfico: Top Motoristas (em cima)
+            st.markdown("**Top 10 Motoristas (Itens)**")
+            ranking_m_d = df_danos.groupby("Motorista")["Quantidade"].sum().nlargest(10).reset_index()
+            fig_m_d = px.bar(ranking_m_d, x='Quantidade', y='Motorista', orientation='h', color='Quantidade', color_continuous_scale='Blues')
+            fig_m_d.update_layout(yaxis={'categoryorder':'total ascending'}, showlegend=False)
+            st.plotly_chart(fig_m_d, use_container_width=True)
+            
+            st.write("---") # Uma linha divisória sutil para organizar o visual
+            
+            # 2º Gráfico: Filiais (embaixo)
+            st.markdown("**Comparativo por Filial (Itens)**")
+            contagem_f_d = df_danos.groupby("Filial")["Quantidade"].sum().reset_index().sort_values("Quantidade", ascending=False)
+            fig_f_d = px.bar(contagem_f_d, x='Filial', y='Quantidade', text='Quantidade', color='Quantidade', color_continuous_scale='Blues')
+            fig_f_d.update_layout(xaxis={'categoryorder':'total descending'}, showlegend=False)
+            st.plotly_chart(fig_f_d, use_container_width=True)
                 
         st.markdown("### 📋 Tabela Organizada - Danos")
         st.dataframe(organizar_tabela(df_danos), use_container_width=True)
@@ -161,26 +162,26 @@ try:
     # ABA 3: FALTAS
     with aba3:
         if not df_faltas.empty:
-            st.markdown("### 📊 Análise de Faltas: Filial e Top Motoristas")
-            col1, col2 = st.columns(2)
+            st.markdown("### 📊 Análise de Faltas: Top Motoristas e Filial")
             
-            with col1:
-                st.markdown("**Comparativo por Filial (Itens)**")
-                contagem_f_f = df_faltas.groupby("Filial")["Quantidade"].sum().reset_index().sort_values("Quantidade", ascending=False)
-                fig_f_f = px.bar(contagem_f_f, x='Filial', y='Quantidade', text='Quantidade', color='Quantidade', color_continuous_scale='Reds')
-                fig_f_f.update_layout(xaxis={'categoryorder':'total descending'}, showlegend=False)
-                st.plotly_chart(fig_f_f, use_container_width=True)
-                
-            with col2:
-                st.markdown("**Top 10 Motoristas (Itens)**")
-                ranking_m_f = df_faltas.groupby("Motorista")["Quantidade"].sum().nlargest(10).reset_index()
-                fig_m_f = px.bar(ranking_m_f, x='Quantidade', y='Motorista', orientation='h', color='Quantidade', color_continuous_scale='Reds')
-                fig_m_f.update_layout(yaxis={'categoryorder':'total ascending'}, showlegend=False)
-                st.plotly_chart(fig_m_f, use_container_width=True)
+            # 1º Gráfico: Top Motoristas (em cima)
+            st.markdown("**Top 10 Motoristas (Itens)**")
+            ranking_m_f = df_faltas.groupby("Motorista")["Quantidade"].sum().nlargest(10).reset_index()
+            fig_m_f = px.bar(ranking_m_f, x='Quantidade', y='Motorista', orientation='h', color='Quantidade', color_continuous_scale='Reds')
+            fig_m_f.update_layout(yaxis={'categoryorder':'total ascending'}, showlegend=False)
+            st.plotly_chart(fig_m_f, use_container_width=True)
+            
+            st.write("---") # Uma linha divisória sutil
+            
+            # 2º Gráfico: Filiais (embaixo)
+            st.markdown("**Comparativo por Filial (Itens)**")
+            contagem_f_f = df_faltas.groupby("Filial")["Quantidade"].sum().reset_index().sort_values("Quantidade", ascending=False)
+            fig_f_f = px.bar(contagem_f_f, x='Filial', y='Quantidade', text='Quantidade', color='Quantidade', color_continuous_scale='Reds')
+            fig_f_f.update_layout(xaxis={'categoryorder':'total descending'}, showlegend=False)
+            st.plotly_chart(fig_f_f, use_container_width=True)
 
         st.markdown("### 📋 Tabela Organizada - Faltas")
         st.dataframe(organizar_tabela(df_faltas), use_container_width=True)
-
     # ABA 4: CURVA ABC REATIVA
     with aba4:
         st.subheader("🎯 Classificação ABC por Motorista (Reativa)")
