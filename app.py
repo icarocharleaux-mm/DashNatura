@@ -287,9 +287,12 @@ try:
         st.subheader("🚨 Dossiê de Fraudes")
         if not df_uni.empty:
             df_cli = df_uni[~df_uni['Cliente'].str.upper().isin(['NÃO IDENTIFICADO', 'NAN', ''])].copy()
+            
+            # Regra 1: Volume Crítico
             f_vol = df_cli[df_cli['Quantidade'] >= 900].copy()
             f_vol['Motivo'] = 'Volume Crítico'
             
+            # Regra 2: Reclamação Idêntica
             df_rep = df_cli[df_cli['Quantidade'] >= 10].copy()
             cli_susp = df_rep.groupby(['Cliente', 'Quantidade']).size().reset_index(name='V')
             cli_susp = cli_susp[cli_susp['V'] > 1]
@@ -297,12 +300,38 @@ try:
             f_rep['Motivo'] = 'Reclamação Idêntica'
             
             alertas = pd.concat([f_vol, f_rep])
+            
             if not alertas.empty:
+                # Removemos duplicidades de cruzamento
                 alertas = alertas.drop_duplicates(subset=['Pedido', 'Motivo'])
                 alertas = alertas.loc[:, ~alertas.columns.duplicated()] 
                 
                 st.error(f"⚠️ {len(alertas)} Indícios Detectados")
-                st.dataframe(alertas[['Motivo', 'Cliente', 'Pedido', 'Quantidade', 'Motorista', 'Filial', 'Canal']], use_container_width=True)
+                
+                # 1. Definimos as colunas que queremos ver, incluindo 'Tipo_Ocorrencia'
+                colunas_exibicao = ['Motivo', 'Cliente', 'Pedido', 'Quantidade', 'Tipo_Ocorrencia', 'Motorista', 'Filial', 'Canal']
+                df_exibicao = alertas[colunas_exibicao].copy()
+                
+                # 2. Calculamos a soma da coluna Quantidade
+                total_qtd = df_exibicao['Quantidade'].sum()
+                
+                # 3. Criamos a linha de "TOTAL"
+                linha_total = pd.DataFrame([{
+                    'Motivo': 'TOTAL GERAL',
+                    'Cliente': '-',
+                    'Pedido': '-',
+                    'Quantidade': total_qtd,
+                    'Tipo_Ocorrencia': '-',
+                    'Motorista': '-',
+                    'Filial': '-',
+                    'Canal': '-'
+                }])
+                
+                # 4. Unimos a linha de total ao final da tabela original
+                df_final = pd.concat([df_exibicao, linha_total], ignore_index=True)
+                
+                # Mostramos a tabela atualizada
+                st.dataframe(df_final, use_container_width=True)
             else: 
                 st.success("✅ Tudo limpo no filtro atual.")
 
