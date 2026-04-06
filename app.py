@@ -143,11 +143,19 @@ try:
             # 1º Gráfico: Top Motoristas (em cima)
             st.markdown("**Top 10 Motoristas (Itens)**")
             ranking_m_d = df_danos.groupby("Motorista")["Quantidade"].sum().nlargest(10).reset_index()
-            fig_m_d = px.bar(ranking_m_d, x='Quantidade', y='Motorista', orientation='h', color='Quantidade', color_continuous_scale='Blues')
+            
+            # Descobrindo a filial principal do motorista e adicionando ao ranking
+            filial_map_d = df_danos.groupby("Motorista")["Filial"].agg(lambda x: x.value_counts().index[0] if not x.empty else "N/A").to_dict()
+            ranking_m_d["Filial"] = ranking_m_d["Motorista"].map(filial_map_d)
+            
+            # Criando o gráfico e adicionando o hover_data
+            fig_m_d = px.bar(ranking_m_d, x='Quantidade', y='Motorista', orientation='h', 
+                             color='Quantidade', color_continuous_scale='Blues',
+                             hover_data=['Filial'])
             fig_m_d.update_layout(yaxis={'categoryorder':'total ascending'}, showlegend=False)
             st.plotly_chart(fig_m_d, use_container_width=True)
             
-            st.write("---") # Uma linha divisória sutil para organizar o visual
+            st.write("---")
             
             # 2º Gráfico: Filiais (embaixo)
             st.markdown("**Comparativo por Filial (Itens)**")
@@ -167,11 +175,19 @@ try:
             # 1º Gráfico: Top Motoristas (em cima)
             st.markdown("**Top 10 Motoristas (Itens)**")
             ranking_m_f = df_faltas.groupby("Motorista")["Quantidade"].sum().nlargest(10).reset_index()
-            fig_m_f = px.bar(ranking_m_f, x='Quantidade', y='Motorista', orientation='h', color='Quantidade', color_continuous_scale='Reds')
+            
+            # Descobrindo a filial principal do motorista e adicionando ao ranking
+            filial_map_f = df_faltas.groupby("Motorista")["Filial"].agg(lambda x: x.value_counts().index[0] if not x.empty else "N/A").to_dict()
+            ranking_m_f["Filial"] = ranking_m_f["Motorista"].map(filial_map_f)
+            
+            # Criando o gráfico e adicionando o hover_data
+            fig_m_f = px.bar(ranking_m_f, x='Quantidade', y='Motorista', orientation='h', 
+                             color='Quantidade', color_continuous_scale='Reds',
+                             hover_data=['Filial'])
             fig_m_f.update_layout(yaxis={'categoryorder':'total ascending'}, showlegend=False)
             st.plotly_chart(fig_m_f, use_container_width=True)
             
-            st.write("---") # Uma linha divisória sutil
+            st.write("---") 
             
             # 2º Gráfico: Filiais (embaixo)
             st.markdown("**Comparativo por Filial (Itens)**")
