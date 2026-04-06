@@ -120,14 +120,25 @@ try:
         c3.metric("Ocorrências de Falta", len(df_faltas))
         c4.metric("Itens Afetados", int(df_uni["Quantidade"].sum()))
         st.write("---")
+        
         col_esq, col_dir = st.columns([2, 1])
+        
         with col_esq:
             st.markdown("**📊 Top 10 Motoristas (Volume de Itens)**")
             if not df_uni.empty:
                 ranking = df_uni.groupby('Motorista')['Quantidade'].sum().nlargest(10).reset_index()
-                fig = px.bar(ranking, x='Quantidade', y='Motorista', orientation='h', color='Quantidade', color_continuous_scale='Viridis')
+                
+                # Descobrindo a filial principal do motorista no geral (Danos + Faltas)
+                filial_map_geral = df_uni.groupby("Motorista")["Filial"].agg(lambda x: x.value_counts().index[0] if not x.empty else "N/A").to_dict()
+                ranking["Filial"] = ranking["Motorista"].map(filial_map_geral)
+                
+                # Criando o gráfico com o hover_data
+                fig = px.bar(ranking, x='Quantidade', y='Motorista', orientation='h', 
+                             color='Quantidade', color_continuous_scale='Viridis',
+                             hover_data=['Filial'])
                 fig.update_layout(yaxis={'categoryorder':'total ascending'}, showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
+                
         with col_dir:
             st.markdown("**⚖️ Dano x Falta (Itens)**")
             if not df_uni.empty:
